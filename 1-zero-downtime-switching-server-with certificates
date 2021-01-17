@@ -1,0 +1,118 @@
+## Zero downtime switching server with certificates
+
+This tutorial is using:
+
+- 2 servers with Ubuntu 18.04
+- 1 Server already installed nginx and certbot already using the certificate
+- certbot 0.31.0
+- nginx version: nginx/1.14.0 (Ubuntu)
+- a domain called `test.example.com` already using the certificate
+
+## 1.) SSH into old server
+
+```sh
+# ssh into server
+$ shh <youruser>@<your.first.server.ip>
+```
+
+## 2.) archive the complete lets encrypt folder
+
+```sh
+# archive the letsencrypt folder
+$ sudo tar -chvzf certs.tar.gz /etc/letsencrypt
+```
+
+## 3.) Copy the archive to the new server
+
+Copy it directly (if you are using a pw on the other server or have the ssh-keys set up) from your first server.
+
+```sh
+# use scp to copy the file
+$ scp certs.tar.gz <youruser>@<your.second.server.ip>:/home/youruser/
+```
+
+## 4.) SSH into the second server
+
+
+```sh
+# ssh into server
+$ shh <youruser>@<your.second.server.ip>
+```
+
+## 5.) Install nginx and certbot
+
+```sh
+# install nginx
+$ sudo apt update
+$ sudo apt install nginx
+# install certbot
+$ sudo add-apt-repository ppa:certbot/certbot
+$ sudo apt install python-certbot-nginx
+```
+
+## 6.) Unarchive the folder on the second server
+
+After this you will have the complete lets encrypt folder in your /etc/letsencrypt
+
+```sh
+# change directory to /
+$ cd /
+# unarchive the file
+$ sudo tar -xvf ~/certs.tar.gz
+```
+
+## 7.) delete live files and cerate symlinks
+
+After this you will have the complete lets encrypt folder in your /etc/letsencrypt
+
+> Note: change `test.example.com` to your domain
+
+> Note: maybe the nuber is different on your .pem files
+
+```sh
+# rm files
+$ rm /etc/letsencrypt/live/test.example.com/cert.pem
+$ rm /etc/letsencrypt/live/test.example.com/chain.pem
+$ rm /etc/letsencrypt/live/test.example.com/fullchain.pem
+$ rm /etc/letsencrypt/live/test.example.com/privkey.pem
+# recreate the files as symlinks
+$ ln -s /etc/letsencrypt/archive/test.example.com/cert1.pem /etc/letsencrypt/live/test.example.com/cert.pem 
+$ ln -s /etc/letsencrypt/archive/test.example.com/chain1.pem /etc/letsencrypt/live/test.example.com/chain.pem 
+$ ln -s /etc/letsencrypt/archive/test.example.com/fullchain1.pem /etc/letsencrypt/live/test.example.com/fullchain.pem 
+$ ln -s /etc/letsencrypt/archive/test.example.com/privkey1.pem /etc/letsencrypt/live/test.example.com/privkey.pem 
+```
+
+## 8.) Dry run certbot renew
+
+> Note: This is really important! Make sure to check if certbot has everything set up correctly to renew certificates
+
+```sh
+$ certbot renew --dry-run
+```
+
+## 9.) Update your nginx configs
+
+Copy your nginx file from server 1 and set up all symlinks from sites-avalable to sites-enabled.
+
+## 10.) Check your nginx config and restart nginx
+
+```sh
+$ sudo nginx -t
+$ sudo service nginx restart
+```
+
+## 11.) change dns
+
+If everything works out fine until here without problems in
+
+`certbot renew --dry-run`
+
+and
+
+`sudo nginx -t`
+
+and
+
+`sudo service nginx restart`
+
+you can change your DNS A entry from `test.example.com on <your.first.server.ip>` to `test.example.com on <your.second.server.ip>`
